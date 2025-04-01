@@ -40,57 +40,52 @@
                 const height = (img.height / img.width) * width;
 
                 pdf.addImage(img, "JPEG", 0, 0, width, height);
-                pdf.save("converted.pdf");
+
+                // Display the generated PDF in the view section
+                const pdfData = pdf.output("arraybuffer");
+                displayPDF(pdfData);
+                // Show the download button
+                document.getElementById("downloadBtn").style.display = "inline-block";
             };
         };
         reader.readAsDataURL(file);
     }
-    </script>
-    <script>
-    function displayPDF(file) {
-        const fileReader = new FileReader();
-        fileReader.onload = function(event) {
-            const pdfData = new Uint8Array(event.target.result);
-            const loadingTask = pdfjsLib.getDocument(pdfData);
 
-            loadingTask.promise.then(pdf => {
-                console.log("PDF loaded");
+    function displayPDF(pdfData) {
+        const loadingTask = pdfjsLib.getDocument(pdfData);
 
-                // Fetch the first page
-                pdf.getPage(1).then(page => {
-                    const scale = 1.5;
-                    const viewport = page.getViewport({ scale: scale });
+        loadingTask.promise.then(pdf => {
+            const canvas = document.getElementById("pdfViewer");
+            const context = canvas.getContext("2d");
 
-                    const canvas = document.getElementById("pdfViewer");
-                    const context = canvas.getContext("2d");
+            const scale = 1.5;
+            const viewport = pdf.getPage(1).getViewport({ scale: scale });
 
-                    canvas.height = viewport.height;
-                    canvas.width = viewport.width;
+            canvas.height = viewport.height;
+            canvas.width = viewport.width;
 
-                    const renderContext = {
-                        canvasContext: context,
-                        viewport: viewport
-                    };
+            const renderContext = {
+                canvasContext: context,
+                viewport: viewport
+            };
 
-                    page.render(renderContext).promise.then(() => {
-                        console.log("Page rendered");
-                    });
+            pdf.getPage(1).then(page => {
+                page.render(renderContext).promise.then(() => {
+                    document.getElementById("pdfContainer").style.display = "block"; // Show the PDF container
                 });
-            }, reason => {
-                console.error(reason);
             });
-        };
-        fileReader.readAsArrayBuffer(file);
+        }, reason => {
+            console.error(reason);
+        });
     }
 
-    // Modify the file input change listener to load the selected PDF
-    document.getElementById("fileInput").addEventListener("change", function(event) {
-        const file = event.target.files[0];
-        if (file && file.type === "application/pdf") {
-            displayPDF(file);
-        }
-    });
-                        </script>
+    function downloadPDF() {
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF();
+        pdf.text("Your converted PDF!", 10, 10); // For testing purpose
+        pdf.save("converted.pdf");
+    }
+    </script>
     <button id="downloadBtn" style="display: none;" onclick="downloadPDF()">Download PDF</button>
 </body>
 </html>
