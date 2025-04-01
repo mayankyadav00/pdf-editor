@@ -14,7 +14,7 @@
 </head>
 <body>
     <h1>PDF Converter & Viewer</h1>
-    <input type="file" id="fileInput" accept="image/*">
+    <input type="file" id="fileInput" accept="image/*" multiple>
     <button onclick="convertToPDF()">Convert to PDF</button><div id="pdfContainer">
     <h2>View PDF</h2>
     <canvas id="pdfViewer"></canvas>
@@ -22,47 +22,53 @@
 </div>
 
 <script>
-    let globalPDF = null; // Store the generated PDF globally
+    let globalPDF = null;
     
     async function convertToPDF() {
         const { jsPDF } = window.jspdf;
         const fileInput = document.getElementById("fileInput");
-        const file = fileInput.files[0];
+        const files = fileInput.files;
 
-        if (!file) {
-            alert("Please select an image file.");
+        if (!files.length) {
+            alert("Please select one or more image files.");
             return;
         }
 
-        const reader = new FileReader();
-        reader.onload = function(event) {
-            const img = new Image();
-            img.src = event.target.result;
-            img.onload = function() {
-                const pdf = new jsPDF({ orientation: "portrait", unit: "px" });
-                const pdfWidth = pdf.internal.pageSize.getWidth();
-                const pdfHeight = pdf.internal.pageSize.getHeight();
-                const imgWidth = img.width;
-                const imgHeight = img.height;
-                
-                // Calculate scaling while maintaining aspect ratio
-                const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight);
-                const newWidth = imgWidth * ratio;
-                const newHeight = imgHeight * ratio;
-                const xOffset = (pdfWidth - newWidth) / 2;
-                const yOffset = (pdfHeight - newHeight) / 2;
-                
-                pdf.addImage(img, "JPEG", xOffset, yOffset, newWidth, newHeight);
-                globalPDF = pdf;
-                
-                // Convert PDF to array buffer and display it
-                const pdfData = pdf.output("arraybuffer");
-                displayPDF(pdfData);
-                document.getElementById("pdfContainer").style.display = "block";
-                document.getElementById("downloadBtn").style.display = "inline-block";
+        const pdf = new jsPDF({ orientation: "portrait", unit: "px" });
+        let isFirstPage = true;
+        
+        for (let file of files) {
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const img = new Image();
+                img.src = event.target.result;
+                img.onload = function() {
+                    const pdfWidth = pdf.internal.pageSize.getWidth();
+                    const pdfHeight = pdf.internal.pageSize.getHeight();
+                    const imgWidth = img.width;
+                    const imgHeight = img.height;
+                    
+                    const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight);
+                    const newWidth = imgWidth * ratio;
+                    const newHeight = imgHeight * ratio;
+                    const xOffset = (pdfWidth - newWidth) / 2;
+                    const yOffset = (pdfHeight - newHeight) / 2;
+                    
+                    if (!isFirstPage) pdf.addPage();
+                    pdf.addImage(img, "JPEG", xOffset, yOffset, newWidth, newHeight);
+                    isFirstPage = false;
+                    
+                    if (file === files[files.length - 1]) {
+                        globalPDF = pdf;
+                        const pdfData = pdf.output("arraybuffer");
+                        displayPDF(pdfData);
+                        document.getElementById("pdfContainer").style.display = "block";
+                        document.getElementById("downloadBtn").style.display = "inline-block";
+                    }
+                };
             };
-        };
-        reader.readAsDataURL(file);
+            reader.readAsDataURL(file);
+        }
     }
     
     function displayPDF(pdfData) {
@@ -91,6 +97,10 @@
             globalPDF.save("converted.pdf");
         }
     }
+</script>
+
+</body>
+</html>   }
 </script>
 
 </body>
