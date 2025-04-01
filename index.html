@@ -2,27 +2,33 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PDF Converter & Viewer</title>
+    <title>PDF Converter & Editor</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.10.377/pdf.min.js"></script>
     <style>
         body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
-        input, button { margin: 10px; padding: 10px; }
+        input, button, textarea { margin: 10px; padding: 10px; width: 80%; max-width: 600px; display: block; margin-left: auto; margin-right: auto; }
         #pdfContainer { display: none; text-align: center; margin-top: 20px; }
         canvas { border: 1px solid #000; display: block; margin: auto; }
     </style>
 </head>
 <body>
-    <h1>PDF Converter & Viewer</h1>
-    <input type="file" id="fileInput" accept="image/*" multiple>
-    <button onclick="convertToPDF()">Convert to PDF</button><div id="pdfContainer">
-    <h2>View PDF</h2>
+    <h1>PDF Converter & Editor</h1>
+    <input type="file" id="fileInput" accept="image/*,application/pdf" multiple>
+    <button onclick="convertToPDF()">Convert Images to PDF</button>
+    <button onclick="loadPDF()">Load PDF for Editing</button><div id="pdfContainer">
+    <h2>View & Edit PDF</h2>
     <canvas id="pdfViewer"></canvas>
+    <textarea id="textEditor" placeholder="Extracted text will appear here..." rows="10"></textarea>
+    <button onclick="updatePDF()">Update PDF Text</button>
+    <button onclick="addPage()">Add Blank Page</button>
+    <button onclick="removeLastPage()">Remove Last Page</button>
     <button id="downloadBtn" style="display: none;" onclick="downloadPDF()">Download PDF</button>
 </div>
 
 <script>
     let globalPDF = null;
+    let extractedText = "";
     
     async function convertToPDF() {
         const { jsPDF } = window.jspdf;
@@ -60,10 +66,7 @@
                     
                     if (file === files[files.length - 1]) {
                         globalPDF = pdf;
-                        const pdfData = pdf.output("arraybuffer");
-                        displayPDF(pdfData);
-                        document.getElementById("pdfContainer").style.display = "block";
-                        document.getElementById("downloadBtn").style.display = "inline-block";
+                        displayPDF();
                     }
                 };
             };
@@ -71,36 +74,74 @@
         }
     }
     
-    function displayPDF(pdfData) {
-        const loadingTask = pdfjsLib.getDocument({ data: pdfData });
-        loadingTask.promise.then(pdf => {
-            pdf.getPage(1).then(page => {
-                const scale = 1.5;
-                const viewport = page.getViewport({ scale: scale });
-                const canvas = document.getElementById("pdfViewer");
-                const context = canvas.getContext("2d");
-                
-                canvas.height = viewport.height;
-                canvas.width = viewport.width;
-                
-                const renderContext = {
-                    canvasContext: context,
-                    viewport: viewport
-                };
-                page.render(renderContext);
+    function loadPDF() {
+        const fileInput = document.getElementById("fileInput");
+        const file = fileInput.files[0];
+        
+        if (!file || file.type !== "application/pdf") {
+            alert("Please select a valid PDF file.");
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            const loadingTask = pdfjsLib.getDocument({ data: event.target.result });
+            loadingTask.promise.then(pdf => {
+                pdf.getPage(1).then(page => {
+                    const scale = 1.5;
+                    const viewport = page.getViewport({ scale: scale });
+                    const canvas = document.getElementById("pdfViewer");
+                    const context = canvas.getContext("2d");
+                    
+                    canvas.height = viewport.height;
+                    canvas.width = viewport.width;
+                    
+                    const renderContext = {
+                        canvasContext: context,
+                        viewport: viewport
+                    };
+                    page.render(renderContext);
+                    
+                    return page.getTextContent();
+                }).then(textContent => {
+                    extractedText = textContent.items.map(item => item.str).join(" ");
+                    document.getElementById("textEditor").value = extractedText;
+                    document.getElementById("pdfContainer").style.display = "block";
+                    document.getElementById("downloadBtn").style.display = "inline-block";
+                });
             });
-        });
+        };
+        reader.readAsArrayBuffer(file);
+    }
+    
+    function updatePDF() {
+        if (!globalPDF) return;
+        
+        const newText = document.getElementById("textEditor").value;
+        globalPDF = new jsPDF();
+        globalPDF.text(newText, 10, 20);
+        displayPDF();
+    }
+    
+    function addPage() {
+        if (globalPDF) {
+            globalPDF.addPage();
+            displayPDF();
+        }
+    }
+    
+    function removeLastPage() {
+        if (globalPDF && globalPDF.internal.pages.length > 1) {
+            globalPDF.deletePage(globalPDF.internal.pages.length);
+            displayPDF();
+        }
     }
     
     function downloadPDF() {
         if (globalPDF) {
-            globalPDF.save("converted.pdf");
+            globalPDF.save("edited.pdf");
         }
     }
-</script>
-
-</body>
-</html>   }
 </script>
 
 </body>
