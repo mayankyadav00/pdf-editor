@@ -6,10 +6,13 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.10.377/pdf.min.js"></script>
     <style>
-        body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
-        input, button, textarea { margin: 10px; padding: 10px; width: 80%; max-width: 600px; display: block; margin-left: auto; margin-right: auto; }
-        #pdfContainer { display: none; text-align: center; margin-top: 20px; }
-        canvas { border: 1px solid #000; display: block; margin: auto; }
+        body { font-family: Arial, sans-serif; text-align: center; padding: 20px; background-color: #f4f4f4; }
+        input, button, textarea { margin: 10px; padding: 10px; width: 80%; max-width: 600px; display: block; margin-left: auto; margin-right: auto; border-radius: 5px; border: none; }
+        button { background-color: #007bff; color: white; cursor: pointer; font-size: 16px; }
+        button:hover { background-color: #0056b3; }
+        #pdfContainer { display: none; text-align: center; margin-top: 20px; background: white; padding: 20px; border-radius: 10px; box-shadow: 0px 0px 10px rgba(0,0,0,0.1); }
+        .pdf-page { margin: 10px auto; border: 1px solid #000; display: block; }
+        .controls { display: flex; justify-content: center; gap: 10px; margin-top: 10px; }
     </style>
 </head>
 <body>
@@ -18,11 +21,13 @@
     <button onclick="convertToPDF()">Convert Images to PDF</button>
     <button onclick="loadPDF()">Load PDF for Editing</button><div id="pdfContainer">
     <h2>View & Edit PDF</h2>
-    <canvas id="pdfViewer"></canvas>
-    <textarea id="textEditor" placeholder="Extracted text will appear here..." rows="10"></textarea>
-    <button onclick="updatePDF()">Update PDF Text</button>
-    <button onclick="addPage()">Add Blank Page</button>
-    <button onclick="removeLastPage()">Remove Last Page</button>
+    <div id="pdfPages"></div>
+    <textarea id="textEditor" placeholder="Edit text here..." rows="10"></textarea>
+    <div class="controls">
+        <button onclick="updatePDF()">Update PDF Text</button>
+        <button onclick="addPage()">Add Blank Page</button>
+        <button onclick="removeLastPage()">Remove Last Page</button>
+    </div>
     <button id="downloadBtn" style="display: none;" onclick="downloadPDF()">Download PDF</button>
 </div>
 
@@ -51,12 +56,9 @@
                 img.onload = function() {
                     const pdfWidth = pdf.internal.pageSize.getWidth();
                     const pdfHeight = pdf.internal.pageSize.getHeight();
-                    const imgWidth = img.width;
-                    const imgHeight = img.height;
-                    
-                    const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight);
-                    const newWidth = imgWidth * ratio;
-                    const newHeight = imgHeight * ratio;
+                    const ratio = Math.min(pdfWidth / img.width, pdfHeight / img.height);
+                    const newWidth = img.width * ratio;
+                    const newHeight = img.height * ratio;
                     const xOffset = (pdfWidth - newWidth) / 2;
                     const yOffset = (pdfHeight - newHeight) / 2;
                     
@@ -87,28 +89,23 @@
         reader.onload = function(event) {
             const loadingTask = pdfjsLib.getDocument({ data: event.target.result });
             loadingTask.promise.then(pdf => {
-                pdf.getPage(1).then(page => {
-                    const scale = 1.5;
-                    const viewport = page.getViewport({ scale: scale });
-                    const canvas = document.getElementById("pdfViewer");
-                    const context = canvas.getContext("2d");
-                    
-                    canvas.height = viewport.height;
-                    canvas.width = viewport.width;
-                    
-                    const renderContext = {
-                        canvasContext: context,
-                        viewport: viewport
-                    };
-                    page.render(renderContext);
-                    
-                    return page.getTextContent();
-                }).then(textContent => {
-                    extractedText = textContent.items.map(item => item.str).join(" ");
-                    document.getElementById("textEditor").value = extractedText;
-                    document.getElementById("pdfContainer").style.display = "block";
-                    document.getElementById("downloadBtn").style.display = "inline-block";
-                });
+                globalPDF = new jsPDF();
+                document.getElementById("pdfPages").innerHTML = "";
+                for (let i = 1; i <= pdf.numPages; i++) {
+                    pdf.getPage(i).then(page => {
+                        const scale = 1.5;
+                        const viewport = page.getViewport({ scale: scale });
+                        const canvas = document.createElement("canvas");
+                        canvas.className = "pdf-page";
+                        canvas.height = viewport.height;
+                        canvas.width = viewport.width;
+                        document.getElementById("pdfPages").appendChild(canvas);
+                        const context = canvas.getContext("2d");
+                        page.render({ canvasContext: context, viewport: viewport });
+                    });
+                }
+                document.getElementById("pdfContainer").style.display = "block";
+                document.getElementById("downloadBtn").style.display = "inline-block";
             });
         };
         reader.readAsArrayBuffer(file);
