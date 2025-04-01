@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.10.377/pdf.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -14,6 +15,8 @@
     <h1>PDF Converter & Editor</h1>
     <input type="file" id="fileInput" accept="image/*, application/pdf">
     <button onclick="convertToPDF()">Convert to PDF</button>
+    <h2>View PDF</h2>
+<canvas id="pdfViewer" style="border: 1px solid #000; max-width: 100%;"></canvas>
     <script>
     async function convertToPDF() {
         const { jsPDF } = window.jspdf;
@@ -41,5 +44,50 @@
         reader.readAsDataURL(file);
     }
     </script>
+    <script>
+    function displayPDF(file) {
+        const fileReader = new FileReader();
+        fileReader.onload = function(event) {
+            const pdfData = new Uint8Array(event.target.result);
+            const loadingTask = pdfjsLib.getDocument(pdfData);
+
+            loadingTask.promise.then(pdf => {
+                console.log("PDF loaded");
+
+                // Fetch the first page
+                pdf.getPage(1).then(page => {
+                    const scale = 1.5;
+                    const viewport = page.getViewport({ scale: scale });
+
+                    const canvas = document.getElementById("pdfViewer");
+                    const context = canvas.getContext("2d");
+
+                    canvas.height = viewport.height;
+                    canvas.width = viewport.width;
+
+                    const renderContext = {
+                        canvasContext: context,
+                        viewport: viewport
+                    };
+
+                    page.render(renderContext).promise.then(() => {
+                        console.log("Page rendered");
+                    });
+                });
+            }, reason => {
+                console.error(reason);
+            });
+        };
+        fileReader.readAsArrayBuffer(file);
+    }
+
+    // Modify the file input change listener to load the selected PDF
+    document.getElementById("fileInput").addEventListener("change", function(event) {
+        const file = event.target.files[0];
+        if (file && file.type === "application/pdf") {
+            displayPDF(file);
+        }
+    });
+                        </script>
 </body>
 </html>
