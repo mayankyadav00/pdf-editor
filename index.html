@@ -1,27 +1,29 @@
-<!DOCTYPE html>
-<html lang="en">
+<!DOCTYPE html><html lang="en">
 <head>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.10.377/pdf.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PDF Converter & Editor</title>
+    <title>PDF Converter & Viewer</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.10.377/pdf.min.js"></script>
     <style>
-        body { font-family: Arial, sans-serif; text-align: center; padding: 20px; display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
         input, button { margin: 10px; padding: 10px; }
-        #pdfViewer { border: 1px solid #000; max-width: 100%; margin: 0 auto; display: block; }
-        #pdfContainer { display: none; } /* Initially hide the container */
+        #pdfContainer { display: none; text-align: center; margin-top: 20px; }
+        canvas { border: 1px solid #000; display: block; margin: auto; }
     </style>
 </head>
 <body>
-    <h1>PDF Converter & Editor</h1>
-    <input type="file" id="fileInput" accept="image/*, application/pdf">
-    <button onclick="convertToPDF()">Convert to PDF</button>
+    <h1>PDF Converter & Viewer</h1>
+    <input type="file" id="fileInput" accept="image/*">
+    <button onclick="convertToPDF()">Convert to PDF</button><div id="pdfContainer">
     <h2>View PDF</h2>
-    <div id="pdfContainer">
-        <canvas id="pdfViewer"></canvas>
-    </div>
-    <script>
+    <canvas id="pdfViewer"></canvas>
+    <button id="downloadBtn" style="display: none;" onclick="downloadPDF()">Download PDF</button>
+</div>
+
+<script>
+    let globalPDF = null; // Store the generated PDF globally
+    
     async function convertToPDF() {
         const { jsPDF } = window.jspdf;
         const fileInput = document.getElementById("fileInput");
@@ -37,57 +39,59 @@
             const img = new Image();
             img.src = event.target.result;
             img.onload = function() {
-                const pdf = new jsPDF();
-                const width = pdf.internal.pageSize.getWidth();
-                const height = (img.height / img.width) * width;
-
-                pdf.addImage(img, "JPEG", 0, 0, width, height);
-
-                // Display the generated PDF in the view section
+                const pdf = new jsPDF({ orientation: "portrait", unit: "px" });
+                const pdfWidth = pdf.internal.pageSize.getWidth();
+                const pdfHeight = pdf.internal.pageSize.getHeight();
+                const imgWidth = img.width;
+                const imgHeight = img.height;
+                
+                // Calculate scaling while maintaining aspect ratio
+                const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight);
+                const newWidth = imgWidth * ratio;
+                const newHeight = imgHeight * ratio;
+                const xOffset = (pdfWidth - newWidth) / 2;
+                const yOffset = (pdfHeight - newHeight) / 2;
+                
+                pdf.addImage(img, "JPEG", xOffset, yOffset, newWidth, newHeight);
+                globalPDF = pdf;
+                
+                // Convert PDF to array buffer and display it
                 const pdfData = pdf.output("arraybuffer");
                 displayPDF(pdfData);
-                // Show the download button
+                document.getElementById("pdfContainer").style.display = "block";
                 document.getElementById("downloadBtn").style.display = "inline-block";
             };
         };
         reader.readAsDataURL(file);
     }
-
+    
     function displayPDF(pdfData) {
-        const loadingTask = pdfjsLib.getDocument(pdfData);
-
+        const loadingTask = pdfjsLib.getDocument({ data: pdfData });
         loadingTask.promise.then(pdf => {
-            const canvas = document.getElementById("pdfViewer");
-            const context = canvas.getContext("2d");
-
-            const scale = 1.5;
-            const viewport = pdf.getPage(1).getViewport({ scale: scale });
-
-            canvas.height = viewport.height;
-            canvas.width = viewport.width;
-
-            const renderContext = {
-                canvasContext: context,
-                viewport: viewport
-            };
-
             pdf.getPage(1).then(page => {
-                page.render(renderContext).promise.then(() => {
-                    document.getElementById("pdfContainer").style.display = "block"; // Show the PDF container
-                });
+                const scale = 1.5;
+                const viewport = page.getViewport({ scale: scale });
+                const canvas = document.getElementById("pdfViewer");
+                const context = canvas.getContext("2d");
+                
+                canvas.height = viewport.height;
+                canvas.width = viewport.width;
+                
+                const renderContext = {
+                    canvasContext: context,
+                    viewport: viewport
+                };
+                page.render(renderContext);
             });
-        }, reason => {
-            console.error(reason);
         });
     }
-
+    
     function downloadPDF() {
-        const { jsPDF } = window.jspdf;
-        const pdf = new jsPDF();
-        pdf.text("Your converted PDF!", 10, 10); // For testing purpose
-        pdf.save("converted.pdf");
+        if (globalPDF) {
+            globalPDF.save("converted.pdf");
+        }
     }
-    </script>
-    <button id="downloadBtn" style="display: none;" onclick="downloadPDF()">Download PDF</button>
+</script>
+
 </body>
 </html>
