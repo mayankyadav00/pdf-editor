@@ -1,5 +1,4 @@
-<!DOCTYPE html>
-<html lang="en">
+<!DOCTYPE html><html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -12,87 +11,112 @@
     <h1>PDF Converter & Editor</h1>
     <input type="file" id="fileInput" accept="image/*,application/pdf" multiple>
     <button onclick="convertToPDF()">Convert Images to PDF</button>
-    <button onclick="loadPDF()">Load PDF for Editing</button>
-    
-    <div id="pdfContainer">
-        <h2>View & Edit PDF</h2>
-        <div id="pdfPages"></div>
-        <button onclick="openEditor()">Edit Text</button>
-        <button id="downloadBtn" style="display: none;" onclick="downloadPDF()">Download PDF</button>
-    </div>
+    <button onclick="loadPDF()">Load PDF for Editing</button><div id="pdfContainer">
+    <h2>View & Edit PDF</h2>
+    <div id="pdfPages"></div>
+    <button onclick="openEditor()">Edit Text</button>
+    <button onclick="addPage()">Add Page</button>
+    <button onclick="removePage()">Remove Last Page</button>
+    <button id="downloadBtn" style="display: none;" onclick="downloadPDF()">Download PDF</button>
+</div>
 
-    <div id="editorContainer">
-        <h2>Edit PDF Text</h2>
-        <textarea id="textEditor"></textarea>
-        <button onclick="updatePDF()">Update PDF</button>
-    </div>
-    
-    <script>
-        let globalPDF = null;
+<div id="editorContainer">
+    <h2>Edit PDF Text</h2>
+    <textarea id="textEditor" oninput="liveUpdatePDF()"></textarea>
+    <button onclick="updatePDF()">Update PDF</button>
+</div>
 
-        function convertToPDF() {
-            const { jsPDF } = window.jspdf;
-            const fileInput = document.getElementById("fileInput");
-            const files = fileInput.files;
+<script>
+    let globalPDF = null;
+    let pageCount = 0;
 
-            if (!files.length) {
-                alert("Please select images.");
-                return;
-            }
+    function convertToPDF() {
+        const { jsPDF } = window.jspdf;
+        const fileInput = document.getElementById("fileInput");
+        const files = fileInput.files;
 
-            const pdf = new jsPDF();
-            let isFirstPage = true;
+        if (!files.length) {
+            alert("Please select images.");
+            return;
+        }
 
-            Array.from(files).forEach((file, index) => {
-                const reader = new FileReader();
-                reader.onload = function(event) {
-                    const img = new Image();
-                    img.src = event.target.result;
-                    img.onload = function() {
-                        const pdfWidth = pdf.internal.pageSize.getWidth();
-                        const pdfHeight = pdf.internal.pageSize.getHeight();
-                        const ratio = Math.min(pdfWidth / img.width, pdfHeight / img.height);
-                        const newWidth = img.width * ratio;
-                        const newHeight = img.height * ratio;
-                        const xOffset = (pdfWidth - newWidth) / 2;
-                        const yOffset = (pdfHeight - newHeight) / 2;
+        const pdf = new jsPDF();
+        let isFirstPage = true;
+        pageCount = files.length;
 
-                        if (!isFirstPage) pdf.addPage();
-                        pdf.addImage(img, "JPEG", xOffset, yOffset, newWidth, newHeight);
-                        isFirstPage = false;
+        Array.from(files).forEach((file, index) => {
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const img = new Image();
+                img.src = event.target.result;
+                img.onload = function() {
+                    const pdfWidth = pdf.internal.pageSize.getWidth();
+                    const pdfHeight = pdf.internal.pageSize.getHeight();
+                    const ratio = Math.min(pdfWidth / img.width, pdfHeight / img.height);
+                    const newWidth = img.width * ratio;
+                    const newHeight = img.height * ratio;
+                    const xOffset = (pdfWidth - newWidth) / 2;
+                    const yOffset = (pdfHeight - newHeight) / 2;
 
-                        if (index === files.length - 1) {
-                            globalPDF = pdf;
-                            displayPDF();
-                        }
-                    };
+                    if (!isFirstPage) pdf.addPage();
+                    pdf.addImage(img, "JPEG", xOffset, yOffset, newWidth, newHeight);
+                    isFirstPage = false;
+
+                    if (index === files.length - 1) {
+                        globalPDF = pdf;
+                        displayPDF();
+                    }
                 };
-                reader.readAsDataURL(file);
-            });
-        }
+            };
+            reader.readAsDataURL(file);
+        });
+    }
 
-        function displayPDF() {
-            if (!globalPDF) return;
-            document.getElementById("pdfContainer").style.display = "block";
-            document.getElementById("downloadBtn").style.display = "inline-block";
-        }
+    function displayPDF() {
+        if (!globalPDF) return;
+        document.getElementById("pdfContainer").style.display = "block";
+        document.getElementById("downloadBtn").style.display = "inline-block";
+    }
 
-        function openEditor() {
-            document.getElementById("editorContainer").style.display = "block";
-        }
+    function openEditor() {
+        document.getElementById("editorContainer").style.display = "block";
+    }
 
-        function updatePDF() {
-            if (!globalPDF) return;
-            const newText = document.getElementById("textEditor").value;
-            globalPDF.text(newText, 10, 20);
-            alert("PDF text updated!");
-        }
+    function updatePDF() {
+        if (!globalPDF) return;
+        const newText = document.getElementById("textEditor").value;
+        globalPDF.text(newText, 10, 20);
+        alert("PDF text updated!");
+    }
 
-        function downloadPDF() {
-            if (globalPDF) {
-                globalPDF.save("edited.pdf");
-            }
+    function liveUpdatePDF() {
+        if (!globalPDF) return;
+        const newText = document.getElementById("textEditor").value;
+        globalPDF.setTextColor(255, 0, 0);
+        globalPDF.text(newText, 10, 20);
+        displayPDF();
+    }
+
+    function addPage() {
+        if (!globalPDF) return;
+        globalPDF.addPage();
+        pageCount++;
+        alert("New page added!");
+    }
+
+    function removePage() {
+        if (!globalPDF || pageCount <= 1) return;
+        globalPDF.deletePage(pageCount);
+        pageCount--;
+        alert("Last page removed!");
+    }
+
+    function downloadPDF() {
+        if (globalPDF) {
+            globalPDF.save("edited.pdf");
         }
-    </script>
+    }
+</script>
+
 </body>
 </html>
