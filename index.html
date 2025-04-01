@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PDF Converter & Editor</title>
@@ -14,9 +15,31 @@
     <input type="file" id="fileInput" accept="image/*, application/pdf">
     <button onclick="convertToPDF()">Convert to PDF</button>
     <script>
-        function convertToPDF() {
-            alert("PDF Conversion feature coming soon!");
+    async function convertToPDF() {
+        const { jsPDF } = window.jspdf;
+        const fileInput = document.getElementById("fileInput");
+        const file = fileInput.files[0];
+
+        if (!file) {
+            alert("Please select an image file.");
+            return;
         }
+
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            const img = new Image();
+            img.src = event.target.result;
+            img.onload = function() {
+                const pdf = new jsPDF();
+                const width = pdf.internal.pageSize.getWidth();
+                const height = (img.height / img.width) * width;
+
+                pdf.addImage(img, "JPEG", 0, 0, width, height);
+                pdf.save("converted.pdf");
+            };
+        };
+        reader.readAsDataURL(file);
+    }
     </script>
 </body>
 </html>
