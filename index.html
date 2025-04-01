@@ -18,7 +18,9 @@
     <input type="file" id="fileInput" accept="image/*, application/pdf">
     <button onclick="convertToPDF()">Convert to PDF</button>
     <h2>View PDF</h2>
-<canvas id="pdfViewer" style="border: 1px solid #000; max-width: 100%;"></canvas>
+    <div id="pdfContainer">
+        <canvas id="pdfViewer"></canvas>
+    </div>
     <script>
     async function convertToPDF() {
         const { jsPDF } = window.jspdf;
