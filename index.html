@@ -1,145 +1,98 @@
-<!DOCTYPE html><html lang="en">
+<!DOCTYPE html>
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PDF Converter & Editor</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.10.377/pdf.min.js"></script>
-    <style>
-        body { font-family: Arial, sans-serif; text-align: center; padding: 20px; background-color: #f4f4f4; }
-        input, button, textarea { margin: 10px; padding: 10px; width: 80%; max-width: 600px; display: block; margin-left: auto; margin-right: auto; border-radius: 5px; border: none; }
-        button { background-color: #007bff; color: white; cursor: pointer; font-size: 16px; }
-        button:hover { background-color: #0056b3; }
-        #pdfContainer { display: none; text-align: center; margin-top: 20px; background: white; padding: 20px; border-radius: 10px; box-shadow: 0px 0px 10px rgba(0,0,0,0.1); }
-        .pdf-page { margin: 10px auto; border: 1px solid #000; display: block; }
-        .controls { display: flex; justify-content: center; gap: 10px; margin-top: 10px; }
-    </style>
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <h1>PDF Converter & Editor</h1>
     <input type="file" id="fileInput" accept="image/*,application/pdf" multiple>
     <button onclick="convertToPDF()">Convert Images to PDF</button>
-    <button onclick="loadPDF()">Load PDF for Editing</button><div id="pdfContainer">
-    <h2>View & Edit PDF</h2>
-    <div id="pdfPages"></div>
-    <textarea id="textEditor" placeholder="Edit text here..." rows="10"></textarea>
-    <div class="controls">
-        <button onclick="updatePDF()">Update PDF Text</button>
-        <button onclick="addPage()">Add Blank Page</button>
-        <button onclick="removeLastPage()">Remove Last Page</button>
+    <button onclick="loadPDF()">Load PDF for Editing</button>
+    
+    <div id="pdfContainer">
+        <h2>View & Edit PDF</h2>
+        <div id="pdfPages"></div>
+        <button onclick="openEditor()">Edit Text</button>
+        <button id="downloadBtn" style="display: none;" onclick="downloadPDF()">Download PDF</button>
     </div>
-    <button id="downloadBtn" style="display: none;" onclick="downloadPDF()">Download PDF</button>
-</div>
 
-<script>
-    let globalPDF = null;
-    let extractedText = "";
+    <div id="editorContainer">
+        <h2>Edit PDF Text</h2>
+        <textarea id="textEditor"></textarea>
+        <button onclick="updatePDF()">Update PDF</button>
+    </div>
     
-    async function convertToPDF() {
-        const { jsPDF } = window.jspdf;
-        const fileInput = document.getElementById("fileInput");
-        const files = fileInput.files;
+    <script>
+        let globalPDF = null;
 
-        if (!files.length) {
-            alert("Please select one or more image files.");
-            return;
-        }
+        function convertToPDF() {
+            const { jsPDF } = window.jspdf;
+            const fileInput = document.getElementById("fileInput");
+            const files = fileInput.files;
 
-        const pdf = new jsPDF({ orientation: "portrait", unit: "px" });
-        let isFirstPage = true;
-        
-        for (let file of files) {
-            const reader = new FileReader();
-            reader.onload = function(event) {
-                const img = new Image();
-                img.src = event.target.result;
-                img.onload = function() {
-                    const pdfWidth = pdf.internal.pageSize.getWidth();
-                    const pdfHeight = pdf.internal.pageSize.getHeight();
-                    const ratio = Math.min(pdfWidth / img.width, pdfHeight / img.height);
-                    const newWidth = img.width * ratio;
-                    const newHeight = img.height * ratio;
-                    const xOffset = (pdfWidth - newWidth) / 2;
-                    const yOffset = (pdfHeight - newHeight) / 2;
-                    
-                    if (!isFirstPage) pdf.addPage();
-                    pdf.addImage(img, "JPEG", xOffset, yOffset, newWidth, newHeight);
-                    isFirstPage = false;
-                    
-                    if (file === files[files.length - 1]) {
-                        globalPDF = pdf;
-                        displayPDF();
-                    }
+            if (!files.length) {
+                alert("Please select images.");
+                return;
+            }
+
+            const pdf = new jsPDF();
+            let isFirstPage = true;
+
+            Array.from(files).forEach((file, index) => {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    const img = new Image();
+                    img.src = event.target.result;
+                    img.onload = function() {
+                        const pdfWidth = pdf.internal.pageSize.getWidth();
+                        const pdfHeight = pdf.internal.pageSize.getHeight();
+                        const ratio = Math.min(pdfWidth / img.width, pdfHeight / img.height);
+                        const newWidth = img.width * ratio;
+                        const newHeight = img.height * ratio;
+                        const xOffset = (pdfWidth - newWidth) / 2;
+                        const yOffset = (pdfHeight - newHeight) / 2;
+
+                        if (!isFirstPage) pdf.addPage();
+                        pdf.addImage(img, "JPEG", xOffset, yOffset, newWidth, newHeight);
+                        isFirstPage = false;
+
+                        if (index === files.length - 1) {
+                            globalPDF = pdf;
+                            displayPDF();
+                        }
+                    };
                 };
-            };
-            reader.readAsDataURL(file);
-        }
-    }
-    
-    function loadPDF() {
-        const fileInput = document.getElementById("fileInput");
-        const file = fileInput.files[0];
-        
-        if (!file || file.type !== "application/pdf") {
-            alert("Please select a valid PDF file.");
-            return;
-        }
-
-        const reader = new FileReader();
-        reader.onload = function(event) {
-            const loadingTask = pdfjsLib.getDocument({ data: event.target.result });
-            loadingTask.promise.then(pdf => {
-                globalPDF = new jsPDF();
-                document.getElementById("pdfPages").innerHTML = "";
-                for (let i = 1; i <= pdf.numPages; i++) {
-                    pdf.getPage(i).then(page => {
-                        const scale = 1.5;
-                        const viewport = page.getViewport({ scale: scale });
-                        const canvas = document.createElement("canvas");
-                        canvas.className = "pdf-page";
-                        canvas.height = viewport.height;
-                        canvas.width = viewport.width;
-                        document.getElementById("pdfPages").appendChild(canvas);
-                        const context = canvas.getContext("2d");
-                        page.render({ canvasContext: context, viewport: viewport });
-                    });
-                }
-                document.getElementById("pdfContainer").style.display = "block";
-                document.getElementById("downloadBtn").style.display = "inline-block";
+                reader.readAsDataURL(file);
             });
-        };
-        reader.readAsArrayBuffer(file);
-    }
-    
-    function updatePDF() {
-        if (!globalPDF) return;
-        
-        const newText = document.getElementById("textEditor").value;
-        globalPDF = new jsPDF();
-        globalPDF.text(newText, 10, 20);
-        displayPDF();
-    }
-    
-    function addPage() {
-        if (globalPDF) {
-            globalPDF.addPage();
-            displayPDF();
         }
-    }
-    
-    function removeLastPage() {
-        if (globalPDF && globalPDF.internal.pages.length > 1) {
-            globalPDF.deletePage(globalPDF.internal.pages.length);
-            displayPDF();
-        }
-    }
-    
-    function downloadPDF() {
-        if (globalPDF) {
-            globalPDF.save("edited.pdf");
-        }
-    }
-</script>
 
+        function displayPDF() {
+            if (!globalPDF) return;
+            document.getElementById("pdfContainer").style.display = "block";
+            document.getElementById("downloadBtn").style.display = "inline-block";
+        }
+
+        function openEditor() {
+            document.getElementById("editorContainer").style.display = "block";
+        }
+
+        function updatePDF() {
+            if (!globalPDF) return;
+            const newText = document.getElementById("textEditor").value;
+            globalPDF.text(newText, 10, 20);
+            alert("PDF text updated!");
+        }
+
+        function downloadPDF() {
+            if (globalPDF) {
+                globalPDF.save("edited.pdf");
+            }
+        }
+    </script>
 </body>
 </html>
