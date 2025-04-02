@@ -3,19 +3,32 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Advanced PDF Editor</title>
+    <title>PDF Maker & Editor</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <div class="container">
-        <h1>PDF Editor</h1>
-        <input type="file" id="fileInput" multiple accept="image/*">
-        <button id="addPageBtn">Add Page</button>
-        <button id="removePageBtn">Remove Page</button>
-        <button id="editTextBtn">Edit Text</button>
-        <button id="downloadBtn">Download PDF</button>
-        <div id="pdfViewer"></div>
+        <h1>PDF Maker & Editor</h1>
+
+        <div class="upload-section">
+            <input type="file" id="fileInput" multiple accept="image/*">
+            <button id="convertBtn">Convert to PDF</button>
+        </div>
+
+        <div class="pdf-preview">
+            <h2>PDF Preview</h2>
+            <div id="pdfViewer"></div>
+        </div>
+
+        <div class="edit-section">
+            <button id="editPDFBtn">Edit PDF</button>
+        </div>
+
+        <div class="actions">
+            <button id="downloadBtn">Download PDF</button>
+        </div>
     </div>
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="script.js"></script>
 </body>
