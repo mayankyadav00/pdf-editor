@@ -3,17 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>JavaScript PDF Editor</title>
+    <title>Advanced PDF Editor</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <h1>JavaScript PDF Editor</h1>
-    <input type="file" id="fileInput" multiple accept="image/*">
-    <button id="addPageBtn">Add Page</button>
-    <button id="removePageBtn">Remove Page</button>
-    <button id="editTextBtn">Edit Text</button>
-    <button id="downloadBtn">Download PDF</button>
-    <div id="pdfViewer"></div>
+    <div class="container">
+        <h1>PDF Editor</h1>
+        <input type="file" id="fileInput" multiple accept="image/*">
+        <button id="addPageBtn">Add Page</button>
+        <button id="removePageBtn">Remove Page</button>
+        <button id="editTextBtn">Edit Text</button>
+        <button id="downloadBtn">Download PDF</button>
+        <div id="pdfViewer"></div>
+    </div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="script.js"></script>
 </body>
